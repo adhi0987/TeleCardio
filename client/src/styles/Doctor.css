@@ -1,0 +1,65 @@
+/* src/styles/Doctor.css */
+
+/* --- Dashboard Layout --- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Appointments take 2/3, AI tools take 1/3 */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Responsive: Stack on smaller screens */
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.full-width {
+    width: 100%;
+}
+
+/* --- Row Color Coding (Per requirements) --- */
+.row-today {
+    background-color: #d4edda; /* Green-ish */
+}
+.row-today:hover {
+    background-color: #c3e6cb;
+}
+
+.row-yesterday {
+    background-color: #fff3cd; /* Yellow-ish */
+}
+.row-yesterday:hover {
+    background-color: #ffeeba;
+}
+
+.row-late {
+    background-color: #f8d7da; /* Red-ish */
+}
+.row-late:hover {
+    background-color: #f5c6cb;
+}
+
+/* --- AI Tool Styling --- */
+.ai-result-box {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.checkbox-group label {
+    display: block;
+    margin: 8px 0;
+    cursor: pointer;
+}
+
+.checkbox-group input {
+    margin-right: 10px;
+}

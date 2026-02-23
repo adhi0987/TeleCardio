@@ -1,1 +1,0 @@
- folder dedicated to creating admin page and login page signup page  doctor page  and patient page 

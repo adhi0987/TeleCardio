@@ -1,0 +1,1 @@
+# tables schem of admin table 

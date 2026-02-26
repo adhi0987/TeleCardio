@@ -26,24 +26,52 @@ const ProfileComplete: React.FC = () => {
     const handleSubmit = async () => {
         try {
             if (role === 'patient') {
-                await patientApi.completeProfile({
+                const res = await patientApi.completeProfile({
                     name: formData.name,
                     phone: formData.phone,
                     age: Number(formData.age),
                     blood_group: formData.blood_group,
                     sex: formData.sex
                 });
+                console.log("Patient Profile Completion Response:", res);
+                if (res.status === 200) {
+                    toast.success("Profile Completed!");
+                    navigate(`/${role}-dashboard`);
+                } else if(res.status === 400) {
+                    toast.success("Profile already completed. Redirecting to dashboard...");
+                    navigate(`/${role}-dashboard`); 
+                }else {
+                    toast.error("Unexpected response from server. Please try again.");
+                }
             } else if (role === 'doctor') {
-                await doctorApi.completeProfile({
+                const res =await doctorApi.completeProfile({
                     name: formData.name,
                     specialization: formData.specialization,
                     nmr_number: formData.nmr_number
                 });
+                console.log("Doctor Profile Completion Response:", res);
+                if (res.status === 200) {
+                    toast.success("Profile Completed!");
+                    navigate(`/${role}-dashboard`);
+                } else if(res.status === 400) {
+                    toast.success("Profile already completed. Redirecting to dashboard...");
+                    navigate(`/${role}-dashboard`); 
+                } else {
+                    toast.error("Unexpected response from server. Please try again.");
+                }
             }
             toast.success("Profile Completed!");
             navigate(`/${role}-dashboard`);
-        } catch (err) {
-            toast.error("Failed to update profile. Ensure you are logged in.");
+        } catch (err: any) {
+            console.error("Profile Completion Error:", err);
+            if(err.isAxiosError && err.response) {
+                if(err.response.status === 400) {
+                    toast.success("Profile already completed. Redirecting to dashboard...");
+                    navigate(`/${role}-dashboard`); 
+                    return;
+                }
+                // toast.error("Failed to update profile. Ensure you are logged in.");
+            }
         }
     };
 

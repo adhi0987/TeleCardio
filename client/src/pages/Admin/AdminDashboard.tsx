@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 // Note: You need to implement an adminApi.getUsers() endpoint in your api.ts 
 // or use the mocked one provided in the previous step.
-import { adminApi } from '../../api/api'; 
 
 interface UserData {
     id: number;

@@ -3,7 +3,7 @@ import type { User } from '../types';
 
 
 interface AuthContextType {
-    user: User | null;
+    user: string | null;
     token: string | null;
     role: string | null;
     login: (userData: User, authToken: string, userRole: string) => void;
@@ -13,7 +13,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [user, setUser] = useState<User | null>(() => {
+    const [user, setUser] = useState<string | null>(() => {
         const savedUser = localStorage.getItem('user');
         return savedUser ? JSON.parse(savedUser) : null;
     });
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const login = (userData: User, authToken: string, userRole: string) => {
         setToken(authToken);
         setRole(userRole);
-        setUser(userData);
+        setUser(userData.id ? userData.id : null);
         localStorage.setItem('token', authToken);
         localStorage.setItem('role', userRole);
         localStorage.setItem('user', JSON.stringify(userData));

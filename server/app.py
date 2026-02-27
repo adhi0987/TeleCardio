@@ -7,6 +7,7 @@ from routers.doctor import doctorRoutes # <-- Add this
 from routers.admin import adminRoutes   # <-- Add this
 from routers.appointment import appointmentRoutes
 from routers.ai import aiRoutes
+from routers.authRoutes import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -26,6 +27,7 @@ app.include_router(doctorRoutes.router) # <-- Add this
 app.include_router(adminRoutes.router)  # <-- Add this
 app.include_router(appointmentRoutes.router)
 app.include_router(aiRoutes.router)
+app.include_router(auth_router, prefix="/auth") 
 
 @app.get("/")
 def read_root():

@@ -18,7 +18,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    has_filled_profile = Column(Boolean, default=False)
     patient_profile = relationship("Patient", back_populates="user", uselist=False, cascade="all, delete")
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False, cascade="all, delete")
 

@@ -31,4 +31,5 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise credentials_exception
+    print(f"Authenticated user role : {user.role} (ID: {user.id})")  # Debugging statement
     return user

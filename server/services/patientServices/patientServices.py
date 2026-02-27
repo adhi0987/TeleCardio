@@ -61,17 +61,24 @@ def verify_patient_otp(db: Session, email: str, otp_code: str):
     # 3. Check if they have completed their profile
     has_profile = db.query(Patient).filter(Patient.user_id == user.id).first() is not None
 
+    # Update user's has_filled_profile field
+    user.has_filled_profile = has_profile
+    db.commit()
+
+
     # 4. Generate JWT Token
     access_token = create_access_token(data={"sub": str(user.id), "role": "PATIENT"})
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "profile_completed": has_profile
+        "profile_completed": has_profile,
+        "message": "OTP verified successfully"
     }
 
 def complete_patient_profile(db: Session, user_id: str, profile_data: PatientCreate):
     # Ensure profile doesn't already exist
+    
     existing_profile = db.query(Patient).filter(Patient.user_id == user_id).first()
     if existing_profile:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Profile already exists.")

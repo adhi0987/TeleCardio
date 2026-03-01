@@ -1,3 +1,4 @@
+
 import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
@@ -10,7 +11,7 @@ import type {
   Prescription,
 } from "../types";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = "http://localhost:8000";
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -77,30 +78,72 @@ api.interceptors.response.use(
   },
   (error) => {
     debugLog("Response error", error);
+
+    // Handle 401 unauthorized - redirect to login
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userId");
+      window.location.href = "/login";
+    }
+
     return Promise.reject(formatAxiosError(error));
   },
 );
 
+// Auth API endpoints
+export const authApi = {
+  // Patient
+  patientSendOtp: (email: string) =>
+    api.post("/api/auth/patient/send-otp", { email }),
+  patientVerifyOtp: (email: string, otp_code: string) =>
+    api.post("/api/auth/patient/verify-otp", { email, otp_code }),
+  patientCompleteProfile: (data: any) =>
+    api.post("/api/auth/patient/complete-profile", data),
+
+  // Doctor
+  doctorSendOtp: (email: string, nmr_number: string) =>
+    api.post("/api/auth/doctor/send-otp", { email, nmr_number }),
+  doctorVerifyOtp: (email: string, otp_code: string) =>
+    api.post("/api/auth/doctor/verify-otp", { email, otp_code }),
+  doctorCompleteProfile: (data: any) =>
+    api.post("/api/auth/doctor/complete-profile", data),
+
+  // NMR Verification
+  verifyNmr: (nmrNumber: string) =>
+    api.post("/api/auth/verify-nmr", { nmrNumber }),
+
+  // Admin
+  adminLogin: (username: string, password: string) =>
+    api.post("/api/admin/auth/login", { username, password }),
+};
+
+// Keep backwards compatibility
 export const patientApi = {
-  sendOtp: (email: string) =>
-    api.post("/patient/auth/send-otp", { email, role: "PATIENT" }),
+  sendOtp: (email: string) => authApi.patientSendOtp(email),
   verifyOtp: (email: string, otp_code: string) =>
-    api.post<LoginResponse>("/patient/auth/verify-otp", { email, otp_code }),
-  completeProfile: (data: any) => api.post("/patient/profile/complete", data),
+    authApi.patientVerifyOtp(email, otp_code),
+  completeProfile: (data: any) => authApi.patientCompleteProfile(data),
 };
 
 export const doctorApi = {
-  sendOtp: (email: string) =>
-    api.post("/doctor/auth/send-otp", { email, role: "DOCTOR" }),
+  sendOtp: (email: string) => api.post("/api/auth/doctor/send-otp", { email }),
   verifyOtp: (email: string, otp_code: string) =>
-    api.post<LoginResponse>("/doctor/auth/verify-otp", { email, otp_code }),
-  completeProfile: (data: any) => api.post("/doctor/profile/complete", data),
-  list: () => api.get<Doctor[]>("/doctor/list"),
+    api.post("/api/auth/doctor/verify-otp", { email, otp_code }),
+  completeProfile: (data: any) =>
+    api.post("/api/auth/doctor/complete-profile", data),
+  list: () => api.get<Doctor[]>("/api/doctor/list"),
 };
 
 export const adminApi = {
   login: (username: string, password: string) =>
-    api.post<LoginResponse>("/admin/auth/login", { username, password }),
+    api.post("/api/admin/auth/login", { username, password }),
+  getUsers: () => api.get("/api/admin/users"),
+  deleteUser: (userId: string) => api.delete(`/api/admin/users/${userId}`),
+  resetPassword: (userId: string, newPassword: string) =>
+    api.post(`/api/admin/users/${userId}/reset-password`, null, {
+      params: { new_password: newPassword },
+    }),
 };
 
 export const appointmentApi = {
@@ -108,22 +151,31 @@ export const appointmentApi = {
     doctor_id: string;
     appointment_date: string;
     illness_description: string;
-  }) => api.post<Appointment>("/appointments/book", data),
+  }) => api.post<Appointment>("/api/appointments/book", data),
 
-  getPatientAppointments: () => api.get<Appointment[]>("/appointments/patient"),
+  getPatientAppointments: () =>
+    api.get<Appointment[]>("/api/appointments/patient"),
 
-  getDoctorAppointments: () => api.get<Appointment[]>("/appointments/doctor"),
+  getDoctorAppointments: () =>
+    api.get<Appointment[]>("/api/appointments/doctor"),
 
   prescribe: (data: {
     appointment_id: number;
     notes: string;
     recommended_tests: string[];
-  }) => api.post<Prescription>("/appointments/prescribe", data),
+  }) => api.post<Prescription>("/api/appointments/prescribe", data),
+
+  getPrescription: (appointmentId: number) =>
+    api.get<Prescription>(`/api/appointments/prescription/${appointmentId}`),
 };
 
 export const aiApi = {
   analyzeEcg: (formData: FormData) =>
-    api.post("/ai/analyze-ecg", formData, {
+    api.post("/api/ai/analyze-ecg", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  analyzeEcho: (formData: FormData) =>
+    api.post("/api/ai/analyze-echo", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };

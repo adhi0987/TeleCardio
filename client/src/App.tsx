@@ -1,76 +1,64 @@
-// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// import { AuthProvider } from './context/AuthContext';
-// import { ToastContainer } from 'react-toastify';
-// import 'react-toastify/dist/ReactToastify.css';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import Landing from "./pages/Landing";
+import Login from "./Auth/Login";
+import ProfileComplete from "./Auth/ProfileComplete";
+import PatientDashboard from "./pages/Patient/PatientDashboard";
+import DoctorDashboard from "./pages/Doctor/DoctorDashboard";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+import Navbar from "./components/Navbar";
+import "./styles/global.css";
 
-// // Components
-// import ProtectedRoute from './components/ProtectedRoute';
+// Protected Route Component
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}> = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem("token");
+  const userRole = localStorage.getItem("userRole");
+  const location = useLocation();
 
-// // Pages
-// import Landing from './pages/Landing';
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-// import PatientDashboard from './pages/Patient/PatientDashboard';
-// import DoctorDashboard from './pages/Doctor/DoctorDashboard';
-// import AdminDashboard from './pages/Admin/AdminDashboard';
-// import Login from './Auth/Login';
-// import ProfileComplete from './Auth/ProfileComplete';
+  if (
+    allowedRoles &&
+    userRole &&
+    !allowedRoles.includes(userRole.toUpperCase())
+  ) {
+    // Redirect to appropriate dashboard based on role
+    if (userRole === "patient") {
+      return <Navigate to="/patient-dashboard" replace />;
+    } else if (userRole === "doctor") {
+      return <Navigate to="/doctor-dashboard" replace />;
+    } else if (userRole === "admin") {
+      return <Navigate to="/admin-dashboard" replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
 
-// function App() {
-//   return (
-//     <AuthProvider>
-//       <Router>
-//         <Routes>
-//           {/* Public Routes */}
-//           <Route path="/" element={<Landing />} />
-//           <Route path="/login/:role" element={<Login />} />
+  return <>{children}</>;
+};
 
-//           {/* Protected Route for Profile Completion (Any logged in user) */}
-//           <Route element={<ProtectedRoute />}>
-//              <Route path="/profile-complete/:role" element={<ProfileComplete />} />
-//           </Route>
-
-//           {/* Role-Based Protected Routes */}
-//           <Route element={<ProtectedRoute allowedRoles={['PATIENT']} />}>
-//             <Route path="/patient-dashboard" element={<PatientDashboard />} />
-//           </Route>
-
-//           <Route element={<ProtectedRoute allowedRoles={['DOCTOR']} />}>
-//             <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-//           </Route>
-
-//           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-//             <Route path="/admin-dashboard" element={<AdminDashboard />} />
-//           </Route>
-
-//         </Routes>
-//         <ToastContainer position="top-right" autoClose={3000} />
-//       </Router>
-//     </AuthProvider>
-//   );
-// }
-
-// export default App;
-
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Landing from './pages/Landing';
-import Login from './Auth/Login';
-import ProfileComplete from './Auth/ProfileComplete';
-import Navbar from './components/Navbar';
-import './styles/global.css';
-
-// A wrapper to conditionally show the navbar only on authenticated routes
+// Layout Component with Navbar
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const noNavRoutes = ['/', '/login'];
-  const showNavbar = !noNavRoutes.includes(location.pathname);
+  const token = localStorage.getItem("token");
+
+  // Show navbar only on authenticated pages
+  const showNavbar = token && !["/", "/login"].includes(location.pathname);
 
   return (
     <>
       {showNavbar && <Navbar />}
-      <div className={showNavbar ? "page-content" : ""}>
-        {children}
-      </div>
+      <div className={showNavbar ? "page-content" : ""}>{children}</div>
     </>
   );
 };
@@ -80,14 +68,50 @@ const App: React.FC = () => {
     <Router>
       <AppLayout>
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/profile-complete" element={<ProfileComplete />} />
-          
-          {/* Add your Dashboard Routes below, ideally wrapped in a ProtectedRoute */}
-          <Route path="/patient-dashboard" element={<div style={{padding: '2rem'}}><h2>Patient Dashboard</h2></div>} />
-          <Route path="/doctor-dashboard" element={<div style={{padding: '2rem'}}><h2>Doctor Dashboard</h2></div>} />
-          <Route path="/admin-dashboard" element={<div style={{padding: '2rem'}}><h2>Admin Dashboard</h2></div>} />
+
+          {/* Protected Route for Profile Completion */}
+          <Route
+            path="/profile-complete"
+            element={
+              <ProtectedRoute>
+                <ProfileComplete />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Based Protected Routes */}
+          <Route
+            path="/patient-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["PATIENT"]}>
+                <PatientDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/doctor-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["DOCTOR"]}>
+                <DoctorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>
     </Router>

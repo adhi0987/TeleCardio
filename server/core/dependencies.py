@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from core.config import settings
 from database.database import get_db
-from models.coreModels import User
+from models.coreModels import User, UserRole
 
 # CHANGED: Using HTTPBearer instead of OAuth2PasswordBearer
 # This forces Swagger UI to just give you a simple text box for the token
@@ -32,4 +32,13 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if user is None:
         raise credentials_exception
     print(f"Authenticated user role : {user.role} (ID: {user.id})")  # Debugging statement
+    return user
+
+def get_admin_user(user: User = Depends(get_current_user)):
+    """Dependency to ensure the current user is an admin"""
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
     return user

@@ -1,3 +1,4 @@
+import random
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from schemas.authSchemas import (
@@ -16,6 +17,9 @@ from schemas.authSchemas import (
 from database.database import get_db
 from services.patientServices import patientServices
 from services.doctorServices import doctorServices
+from services.adminServices import adminServices
+from models.doctor.doctorModels import Doctor
+from models.coreModels import User, UserRole
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -37,7 +41,7 @@ async def patient_complete_profile(data: PatientCompleteProfileRequest, db: Sess
     """Complete patient profile after OTP verification"""
     return patientServices.complete_patient_profile(
         db=db, 
-        user_id=data.user_id, 
+        user_id=str(data.user_id), 
         profile_data=data.profile
     )
 
@@ -46,6 +50,13 @@ async def patient_complete_profile(data: PatientCompleteProfileRequest, db: Sess
 @router.post("/doctor/send-otp")
 async def doctor_send_otp(data: DoctorSendOTPRequest, db: Session = Depends(get_db)):
     """Send OTP to doctor's email for signup"""
+    # First verify NMR is valid and not already registered
+    existing_doctor = db.query(Doctor).filter(Doctor.nmr_number == data.nmr_number).first()
+    if existing_doctor:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="This NMR number is already registered."
+        )
     return doctorServices.request_doctor_otp(db=db, email=data.email)
 
 @router.post("/doctor/verify-otp")
@@ -59,9 +70,50 @@ async def doctor_complete_profile(data: DoctorCompleteProfileRequest, db: Sessio
     """Complete doctor profile after OTP verification"""
     return doctorServices.complete_doctor_profile(
         db=db, 
-        user_id=data.user_id, 
+        user_id=str(data.user_id), 
         profile_data=data.profile
     )
+
+# ==================== NMR VERIFICATION ====================
+
+@router.post("/verify-nmr")
+async def verify_nmr(data: VerifyNMRRequest, db: Session = Depends(get_db)):
+    """Verify NMR number exists in database"""
+    # Check if NMR is already registered
+    existing_doctor = db.query(Doctor).filter(Doctor.nmr_number == data.nmrNumber).first()
+    
+    if not existing_doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="NMR number not found in medical registry."
+        )
+    
+    # Get the associated user email
+    user = db.query(User).filter(User.id == existing_doctor.user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found for this NMR."
+        )
+    
+    return {
+        "message": "NMR Verified", 
+        "email": user.email,
+        "name": existing_doctor.name
+    }
+
+# ==================== ADMIN LOGIN ====================
+
+@router.post("/admin/login")
+async def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
+    """Admin login with username and password"""
+    result = adminServices.verify_admin_credentials(
+        db=db, 
+        username=data.username, 
+        password=data.password
+    )
+    return result
 
 # ==================== LEGACY/MOCK ENDPOINTS (For backwards compatibility) ====================
 
@@ -69,13 +121,6 @@ async def doctor_complete_profile(data: DoctorCompleteProfileRequest, db: Sessio
 MOCK_DOCTOR_DB = {"IN1234": "doctor1@telecardio.com", "IN9876": "doctor2@telecardio.com"}
 MOCK_OTP_STORE = {} # Format: { identifier: otp }
 MOCK_USERS_DB = {} # To check if user profile exists
-
-@router.post("/verify-nmr")
-async def verify_nmr(data: VerifyNMRRequest):
-    email = MOCK_DOCTOR_DB.get(data.nmrNumber)
-    if not email:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NMR number not found in medical registry.")
-    return {"message": "NMR Verified", "email": email}
 
 @router.post("/send-otp")
 async def send_otp(data: OTPRequest):
@@ -128,8 +173,3 @@ async def complete_profile(data: ProfileCompleteRequest):
     MOCK_USERS_DB[identifier] = data.dict()
     return {"message": "Profile completed successfully"}
 
-@router.post("/admin-login")
-async def admin_login(data: AdminLoginRequest):
-    if data.username == "admin" and data.password == "admin123":
-        return {"message": "Admin logged in", "token": "mock_admin_jwt"}
-    raise HTTPException(status_code=401, detail="Invalid admin credentials")

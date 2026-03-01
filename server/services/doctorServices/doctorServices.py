@@ -48,7 +48,12 @@ def verify_doctor_otp(db: Session, email: str, otp_code: str):
     has_profile = db.query(Doctor).filter(Doctor.user_id == user.id).first() is not None
     access_token = create_access_token(data={"sub": str(user.id), "role": "DOCTOR"})
 
-    return {"access_token": access_token, "token_type": "bearer", "profile_completed": has_profile}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "profile_completed": has_profile,
+        "user_id": str(user.id)
+    }
 
 def complete_doctor_profile(db: Session, user_id: str, profile_data: DoctorCreate):
     existing_profile = db.query(Doctor).filter(Doctor.user_id == user_id).first()

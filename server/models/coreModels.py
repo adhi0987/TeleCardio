@@ -9,6 +9,7 @@ from database.database import Base
 class UserRole(str, enum.Enum):
     PATIENT = "PATIENT"
     DOCTOR = "DOCTOR"
+    ADMIN = "ADMIN"
 
 class User(Base):
     __tablename__ = "User"

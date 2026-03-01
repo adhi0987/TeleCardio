@@ -72,3 +72,10 @@ def write_prescription(db: Session, user_id: str, prescription_data: appointment
     db.commit()
     db.refresh(new_prescription)
     return new_prescription
+
+def get_prescription(db: Session, appointment_id: int):
+    """Get prescription for an appointment"""
+    prescription = db.query(Prescription).filter(Prescription.appointment_id == appointment_id).first()
+    if not prescription:
+        raise HTTPException(status_code=404, detail="Prescription not found.")
+    return prescription

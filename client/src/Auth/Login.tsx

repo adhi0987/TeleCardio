@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
@@ -7,10 +8,10 @@ type Role = "patient" | "doctor" | "admin";
 
 const Login: React.FC = () => {
   const [role, setRole] = useState<Role>("patient");
-  const [step, setStep] = useState<1 | 2>(1); // Step 1: Identity, Step 2: OTP
+  const [step, setStep] = useState<1 | 2>(1); // Step 1: Verify identity, Step 2: Enter OTP
   const navigate = useNavigate();
 
-  // Patient / Doctor
+  // Form States
   const [email, setEmail] = useState("");
   const [nmrNumber, setNmrNumber] = useState("");
   const [isNmrVerified, setIsNmrVerified] = useState(false);
@@ -21,21 +22,20 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // Error
+  // Error state
   const [error, setError] = useState("");
 
   const handleVerifyNMR = async () => {
     setError("");
-
     if (!/^IN\d{4}$/.test(nmrNumber)) {
       setError("Invalid NMR Format. Must be INXXXX (e.g., IN1234)");
       return;
     }
-
     try {
       const res = await api.post("/api/auth/verify-nmr", { nmrNumber });
       setVerifiedEmail(res.data.email);
       setIsNmrVerified(true);
+      setError("");
     } catch (err: any) {
       setError(err.response?.data?.detail || "NMR Verification failed.");
       setIsNmrVerified(false);
@@ -71,49 +71,46 @@ const Login: React.FC = () => {
     setError("");
 
     try {
-      /* ================= ADMIN LOGIN ================= */
       if (role === "admin") {
         const res = await api.post("/api/admin/auth/login", {
           username,
           password,
         });
-
         localStorage.setItem("token", res.data.access_token);
         localStorage.setItem("userRole", "admin");
         localStorage.setItem("userId", res.data.admin_id);
-
         navigate("/admin-dashboard");
-        return; // IMPORTANT: stop further execution
-      }
-
-      /* ================= OTP LOGIN ================= */
-      const payload =
-        role === "doctor"
-          ? { email: verifiedEmail, otp_code: otp }
-          : { email, otp_code: otp };
-
-      const endpoint =
-        role === "doctor"
-          ? "/api/auth/doctor/verify-otp"
-          : "/api/auth/patient/verify-otp";
-
-      const res = await api.post(endpoint, payload);
-
-      localStorage.setItem("token", res.data.access_token);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem(
-        "userIdentity",
-        role === "doctor" ? nmrNumber : email,
-      );
-
-      if (res.data.user_id) {
-        localStorage.setItem("userId", res.data.user_id);
-      }
-
-      if (!res.data.profile_completed) {
-        navigate("/profile-complete");
       } else {
-        navigate(`/${role}-dashboard`);
+        // Verify OTP
+        const payload =
+          role === "doctor"
+            ? { email: verifiedEmail, otp_code: otp }
+            : { email, otp_code: otp };
+
+        const endpoint =
+          role === "doctor"
+            ? "/api/auth/doctor/verify-otp"
+            : "/api/auth/patient/verify-otp";
+
+        const res = await api.post(endpoint, payload);
+
+        localStorage.setItem("token", res.data.access_token);
+        localStorage.setItem("userRole", role);
+        localStorage.setItem(
+          "userIdentity",
+          role === "doctor" ? nmrNumber : email,
+        );
+
+        // Store user_id for profile completion
+        if (res.data.user_id) {
+          localStorage.setItem("userId", res.data.user_id);
+        }
+
+        if (!res.data.profile_completed) {
+          navigate("/profile-complete");
+        } else {
+          navigate(`/${role}-dashboard`);
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || "Authentication Failed.");
@@ -156,22 +153,40 @@ const Login: React.FC = () => {
         <p className="auth-subtitle">Select your account type to proceed</p>
 
         <div className="role-tabs">
-          {["patient", "doctor", "admin"].map((r) => (
-            <button
-              key={r}
-              className={role === r ? "active" : ""}
-              onClick={() => {
-                setRole(r as Role);
-                resetForm();
-              }}
-            >
-              {r.charAt(0).toUpperCase() + r.slice(1)}
-            </button>
-          ))}
+          <button
+            className={role === "patient" ? "active" : ""}
+            onClick={() => {
+              setRole("patient");
+              resetForm();
+            }}
+          >
+            Patient
+          </button>
+          <button
+            className={role === "doctor" ? "active" : ""}
+            onClick={() => {
+              setRole("doctor");
+              resetForm();
+            }}
+          >
+            Doctor
+          </button>
+          <button
+            className={role === "admin" ? "active" : ""}
+            onClick={() => {
+              setRole("admin");
+              resetForm();
+            }}
+          >
+            Admin
+          </button>
         </div>
 
         {error && (
-          <div className="error-message" style={{ color: "red" }}>
+          <div
+            className="error-message"
+            style={{ color: "red", marginBottom: "10px" }}
+          >
             {error}
           </div>
         )}
@@ -182,41 +197,62 @@ const Login: React.FC = () => {
           }
           className="auth-form"
         >
-          {/* PATIENT */}
+          {/* PATIENT INPUTS */}
           {role === "patient" && step === 1 && (
-            <input
-              type="email"
-              placeholder="Enter your Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="form-input"
-            />
-          )}
-
-          {/* DOCTOR */}
-          {role === "doctor" && step === 1 && (
-            <div className="nmr-input-group">
+            <div className="form-group">
               <input
-                type="text"
-                placeholder="NMR Number (e.g., IN1234)"
-                value={nmrNumber}
-                onChange={(e) => setNmrNumber(e.target.value)}
-                disabled={isNmrVerified}
+                type="email"
+                placeholder="Enter your Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="form-input"
               />
-              {!isNmrVerified ? (
-                <button type="button" onClick={handleVerifyNMR}>
-                  Verify
-                </button>
-              ) : (
-                <span style={{ color: "green" }}>✓ Verified</span>
+            </div>
+          )}
+
+          {/* DOCTOR INPUTS */}
+          {role === "doctor" && step === 1 && (
+            <div className="form-group">
+              <div className="nmr-input-group">
+                <input
+                  type="text"
+                  placeholder="NMR Number (e.g., IN1234)"
+                  value={nmrNumber}
+                  onChange={(e) => setNmrNumber(e.target.value)}
+                  disabled={isNmrVerified}
+                  required
+                  className="form-input"
+                />
+                {!isNmrVerified ? (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleVerifyNMR}
+                  >
+                    Verify
+                  </button>
+                ) : (
+                  <span className="verified-badge" style={{ color: "green" }}>
+                    ✓ Verified
+                  </span>
+                )}
+              </div>
+              {isNmrVerified && (
+                <p
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#666",
+                    marginTop: "5px",
+                  }}
+                >
+                  OTP will be sent to: {verifiedEmail}
+                </p>
               )}
             </div>
           )}
 
-          {/* ADMIN */}
+          {/* ADMIN INPUTS */}
           {role === "admin" && (
             <>
               <input
@@ -238,31 +274,58 @@ const Login: React.FC = () => {
             </>
           )}
 
-          {/* OTP */}
+          {/* OTP INPUT */}
           {step === 2 && role !== "admin" && (
-            <>
+            <div className="form-group">
               <input
                 type="text"
                 placeholder="Enter 6-digit OTP"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 required
-                maxLength={6}
                 className="form-input"
+                maxLength={6}
               />
-              <button type="button" onClick={handleResendOTP}>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#007bff",
+                  cursor: "pointer",
+                  marginTop: "5px",
+                  fontSize: "0.9rem",
+                }}
+              >
                 Resend OTP
               </button>
-            </>
+            </div>
           )}
 
           <button type="submit" className="btn-primary">
             {role === "admin"
               ? "Login as Admin"
               : step === 1
-              ? "Get OTP"
-              : "Verify & Login"}
+                ? "Get OTP"
+                : "Verify & Login"}
           </button>
+
+          {step === 2 && role !== "admin" && (
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#666",
+                cursor: "pointer",
+                marginTop: "10px",
+              }}
+            >
+              ← Back
+            </button>
+          )}
         </form>
       </div>
     </div>
@@ -270,3 +333,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+

@@ -36,3 +36,23 @@ def authenticate_admin(db: Session, login_data: AdminLogin):
     access_token = create_access_token(data={"sub": str(admin.id), "role": "ADMIN"})
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+def verify_admin_credentials(db: Session, username: str, password: str):
+    """Verify admin credentials and return JWT token"""
+    admin = db.query(Admin).filter(Admin.username == username).first()
+    
+    if not admin or not verify_password(password, admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials"
+        )
+    
+    # Generate JWT Token
+    access_token = create_access_token(data={"sub": str(admin.id), "role": "ADMIN"})
+    
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "admin_id": str(admin.id),
+        "name": admin.name
+    }

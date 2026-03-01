@@ -73,6 +73,7 @@ def verify_patient_otp(db: Session, email: str, otp_code: str):
         "access_token": access_token,
         "token_type": "bearer",
         "profile_completed": has_profile,
+        "user_id": str(user.id),
         "message": "OTP verified successfully"
     }
 
